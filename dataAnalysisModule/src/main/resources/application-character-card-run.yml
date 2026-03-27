@@ -1,0 +1,8 @@
+# mvn -f dataAnalysisModule/pom.xml spring-boot:run -Dspring-boot.run.profiles=character-card-run
+erotica:
+  corpus:
+    batch:
+      enabled: false
+  character-card:
+    batch:
+      enabled: true

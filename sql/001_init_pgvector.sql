@@ -1,4 +1,7 @@
 -- EroticaForge：PostgreSQL + pgvector 初始化脚本
+--
+-- 说明：应用内 LangChain4j 另使用表 erotica_lc4j_embeddings（见 application.yml / LangChainConfig），
+-- 由库在首次启动时自动 CREATE；本脚本中的 erotica_rag_chunks 供后续业务统一或双写策略使用。
 -- 在云库 vectordb 上以超级用户或有权限用户执行；若扩展已存在可跳过第一行。
 -- bge-m3 稠密向量维度通常为 1024；若你实测维度不同，请全局替换 1024 后重建表/索引。
 

@@ -1,0 +1,6 @@
+# 与 profile corpus-run 一同加载：开启批跑（需本机已启动 llama-server）
+# 运行：mvn -f dataAnalysisModule/pom.xml spring-boot:run -Dspring-boot.run.profiles=corpus-run
+erotica:
+  corpus:
+    batch:
+      enabled: true

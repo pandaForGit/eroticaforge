@@ -1,9 +1,15 @@
 # 与本地 llama-server（默认若占 8080）错开；若你改 llama 端口，也可把此处改回 8080
+#
+# 详细日志：追加 --spring.profiles.active=debug（见 application-debug.yml）
 server:
   port: ${SERVER_PORT:8090}
 spring:
   application:
     name: eroticaforge
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
   datasource:
     # 使用环境变量注入，勿把云库密码写进仓库。示例：
     # set DB_URL=jdbc:postgresql://host:5432/vectordb
@@ -13,8 +19,16 @@ spring:
     username: ${DB_USERNAME:panda}
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
-  profiles:
-    active: local
+  config:
+    import: optional:classpath:application-local.yml
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: input
 
 # llama.cpp OpenAI 兼容（你本机为 localhost:8080）
 langchain4j:
@@ -29,8 +43,40 @@ langchain4j:
   ollama:
     base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
     embedding:
+      # 嵌入失败时不重试（默认 0）。Ollama 若返回 NaN 会连错 3 次并刷屏 WARN；RAG 侧已降级为空上下文。
+      max-retries: ${OLLAMA_EMBEDDING_MAX_RETRIES:0}
       options:
         model: ${OLLAMA_EMBEDDING_MODEL:bge-m3}
+
+logging:
+  level:
+    # 单次嵌入失败时 RetryUtils 会对每次重试打 WARN+堆栈；嵌入已 max-retries=0 时通常不再触发，保留可压制其它客户端噪声
+    dev.langchain4j.internal.RetryUtils: ERROR
+
+# LangChain4j PgVector：由库自动建表（与 sql/001 中 erotica_rag_chunks 并存，后续可统一）
+erotica:
+  embedding:
+    dimension: ${EMBEDDING_DIM:1024}
+  pgvector:
+    table: ${PGVECTOR_TABLE:erotica_lc4j_embeddings}
+  # 阶段 3：RAG 切分与检索（见 RagProperties）
+  rag:
+    chunk-size-chars: 512
+    chunk-overlap-chars: 50
+    top-k: 10
+    min-score: 0.75
+    augment-query-with-summary: true
+    search-overfetch-multiplier: 3
+    # 数据分析模块 JSONL 导入参考库时使用的 story_id（erotica_documents / 向量 metadata）
+    reference-corpus-story-id: system-corpus-reference
+    # 是否在检索时合并参考库（与当前 story 的文档一起参与召回）；导入后改为 true 才生效
+    include-reference-corpus: false
+  # 阶段 4：生成闭环（见 GenerationProperties）
+  generation:
+    reindex-chapter-to-rag: false
+    state-summary-max-chars: 120
+    last-ending-tail-chars: 400
+    use-llm-for-state-excerpt: true
 
 management:
   endpoints:

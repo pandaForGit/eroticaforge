@@ -1,0 +1,6 @@
+# 复制为 application-local.yml（勿提交仓库），与 spring.config.import optional 配合使用
+spring:
+  datasource:
+    url: jdbc:postgresql://HOST:5432/vectordb
+    username: USER
+    password: PASSWORD

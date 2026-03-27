@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eroticaforge.infrastructure.persistence.mapper.StoryStateMapper">
+
+    <insert id="insertIgnore">
+        INSERT INTO erotica_story_states (story_id, payload, version, updated_at)
+        VALUES (
+            #{storyId},
+            #{payload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}::jsonb,
+            #{version},
+            #{updatedAt}
+        )
+        ON CONFLICT (story_id) DO NOTHING
+    </insert>
+
+    <update id="updatePayloadVersioned">
+        UPDATE erotica_story_states
+        SET payload = #{payload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}::jsonb,
+            version = version + 1,
+            updated_at = now()
+        WHERE story_id = #{storyId} AND version = #{version}
+    </update>
+</mapper>

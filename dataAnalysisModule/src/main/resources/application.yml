@@ -1,0 +1,70 @@
+# 与主工程 eroticaforge 默认端口错开
+server:
+  port: ${DATA_ANALYSIS_SERVER_PORT:8092}
+
+spring:
+  application:
+    name: eroticaforge-data-analysis
+  config:
+    import: optional:classpath:application-local.yml
+
+# 与主工程相同的 llama-server OpenAI 兼容配置（环境变量可覆盖）
+langchain4j:
+  open-ai:
+    base-url: ${LLM_BASE_URL:http://localhost:8080/v1}
+    api-key: ${LLM_API_KEY:sk-anything}
+    chat-model:
+      model-name: ${LLM_MODEL:Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf}
+      temperature: 0.9
+      # 带 Thinking Process 的模型需更大预算，否则人物卡只有分析无 JSON（可用 LLM_MAX_TOKENS 覆盖）
+      max-tokens: ${LLM_MAX_TOKENS:4096}
+
+erotica:
+  corpus:
+    min-text-chars: 300
+    # 正文前缀上限（配合短模板，适配 n_ctx≈2048 的 llama-server；仍空请加大 -c 到 4096+）
+    max-prefix-chars: 1200
+    max-total-prompt-chars: 2800
+    min-excerpt-chars: 200
+    llm-empty-response-retries: 3
+    llm-retry-delay-ms: 2000
+    log-full-paths: false
+    # 断点续跑：主 JSONL 与 *_skipped.jsonl 中已有 相对路径+SHA256 则跳过
+    resume-enabled: true
+    write-skipped-jsonl: true
+    output-skipped-jsonl: ""
+    batch:
+      enabled: false
+      # 默认：本模块源码下的 resources/小说；打 jar 后请设环境变量 CORPUS_INPUT 为解压目录或绝对路径
+      input-directory: ${CORPUS_INPUT:./src/main/resources/小说}
+      output-jsonl: ${CORPUS_OUTPUT_JSONL:./out/corpus_classification.jsonl}
+
+  # 人物卡批量提取（JSONL），见 CharacterCardExtractorService
+  character-card:
+    max-excerpt-chars: 4000
+    max-total-prompt-chars: 7000
+    min-excerpt-chars: 400
+    max-roles-per-file: 4
+    # 思考链模型需更大 completion 预算（≤0 则用全局 LLM_MAX_TOKENS）；仍 length 请检查 llama-server 是否限制更小
+    llm-max-output-tokens: ${CHARACTER_CARD_LLM_MAX_TOKENS:16384}
+    # 越低越不爱胡写；与 frequency_penalty 配合抑制 Thinking 里车轱辘话
+    llm-temperature: ${CHARACTER_CARD_LLM_TEMPERATURE:0.15}
+    # OpenAI 兼容字段：抑制同句循环（若 chat/completions 报错 400 可设 false）
+    llm-use-open-ai-style-sampling: ${CHARACTER_CARD_LLM_SAMPLING_EXT:true}
+    llm-top-p: ${CHARACTER_CARD_LLM_TOP_P:0.9}
+    llm-frequency-penalty: ${CHARACTER_CARD_LLM_FREQ_PENALTY:0.52}
+    llm-presence-penalty: ${CHARACTER_CARD_LLM_PRES_PENALTY:0.2}
+    llm-empty-response-retries: 3
+    llm-retry-delay-ms: 2000
+    log-full-paths: false
+    # 为 true 时每个文件打印完整处理步骤（INFO）
+    log-trace: ${CHARACTER_CARD_LOG_TRACE:true}
+    # 解析失败时打印模型原文（头尾拼接，最大字符数，0 表示用默认 12000）
+    log-raw-response-on-failure-max-chars: ${CHARACTER_CARD_LOG_RAW_ON_FAIL:12000}
+    resume-enabled: true
+    write-skipped-jsonl: true
+    output-skipped-jsonl: ""
+    batch:
+      enabled: true
+      input-directory: ${CHARACTER_CARD_INPUT:./src/main/resources/小说}
+      output-jsonl: ${CHARACTER_CARD_OUTPUT:./out/character_cards.jsonl}

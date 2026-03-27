@@ -1,4 +1,7 @@
 /target/
+**/target/
+# Stray extracted class tree at repo root (should not be versioned)
+/org/
 .idea/
 *.iml
 .project
@@ -9,3 +12,4 @@
 .env.local
 **/application-local.yml
 **/application-local.properties
+dataAnalysisModule/out/

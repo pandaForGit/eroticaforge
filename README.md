@@ -37,8 +37,21 @@ mvn spring-boot:run
 
 健康检查：<http://localhost:8090/api/health>
 
+## 阶段 1（已完成于代码库）
+
+- `com.eroticaforge.config.LangChainConfig`：`ChatLanguageModel`、`StreamingChatLanguageModel`（llama-server）、`EmbeddingModel`（Ollama bge-m3）、`EmbeddingStore`（PgVector，表名默认 `erotica_lc4j_embeddings`）。
+- 可选本地覆盖：在 `src/main/resources/` 放置 `application-local.yml`（已被 `.gitignore` 忽略），或通过 `spring.config.import` 已支持 **optional** 加载。
+- 本机编译：`mvn -q compile`（需 **JDK 21**，非 JRE）。
+- 可选联调测试（需 DB + Ollama + llama-server）：
+
+```powershell
+$env:EROTICA_RUN_LLM_SMOKE="true"
+mvn -Dtest=LangChainSmokeIT test
+```
+
 ## 与 GitHub 同步
 
 远程仓库：<https://github.com/pandaForGit/eroticaforge>  
 
-首次推送前请确认 **未** 将 `application-local.yml`、`.env` 或真实口令提交进仓库。
+首次推送前请确认 **未** 将 `application-local.yml`、`.env` 或真实口令提交进仓库。  
+**后续推送请在你明确要求后再执行**。
