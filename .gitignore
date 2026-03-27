@@ -13,3 +13,5 @@
 **/application-local.yml
 **/application-local.properties
 dataAnalysisModule/out/
+# Local novel corpus — do not commit (large / private)
+dataAnalysisModule/src/main/resources/小说/
