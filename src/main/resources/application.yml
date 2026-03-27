@@ -1,0 +1,42 @@
+# 与本地 llama-server（默认若占 8080）错开；若你改 llama 端口，也可把此处改回 8080
+server:
+  port: ${SERVER_PORT:8090}
+spring:
+  application:
+    name: eroticaforge
+  datasource:
+    # 使用环境变量注入，勿把云库密码写进仓库。示例：
+    # set DB_URL=jdbc:postgresql://host:5432/vectordb
+    # set DB_USERNAME=panda
+    # set DB_PASSWORD=***
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/vectordb}
+    username: ${DB_USERNAME:panda}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  profiles:
+    active: local
+
+# llama.cpp OpenAI 兼容（你本机为 localhost:8080）
+langchain4j:
+  open-ai:
+    base-url: ${LLM_BASE_URL:http://localhost:8080/v1}
+    api-key: ${LLM_API_KEY:sk-anything}
+    chat-model:
+      model-name: ${LLM_MODEL:Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf}
+      temperature: 0.9
+      max-tokens: 2048
+
+  ollama:
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    embedding:
+      options:
+        model: ${OLLAMA_EMBEDDING_MODEL:bge-m3}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
