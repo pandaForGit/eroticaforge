@@ -65,6 +65,6 @@ erotica:
     write-skipped-jsonl: true
     output-skipped-jsonl: ""
     batch:
-      enabled: true
+      enabled: false
       input-directory: ${CHARACTER_CARD_INPUT:./src/main/resources/小说}
       output-jsonl: ${CHARACTER_CARD_OUTPUT:./out/character_cards.jsonl}

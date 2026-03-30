@@ -49,7 +49,7 @@ export function HealthPage() {
         </Link>
         <h1 className="mt-2 text-2xl font-bold">服务状态</h1>
         <p className="mt-1 text-sm text-base-content/60">
-          聚合检查本机 PostgreSQL、LLM 兼容端（/models）、Ollama 嵌入（/api/tags）。
+          聚合检查本机 PostgreSQL、对话 LLM（/v1/models）、嵌入服务（独立 base-url 的 /v1/models）。
         </p>
       </div>
 

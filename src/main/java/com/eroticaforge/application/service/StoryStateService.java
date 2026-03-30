@@ -34,6 +34,7 @@ public class StoryStateService {
     private final StoryStateRepository storyStateRepository;
     private final ChatLanguageModel chatLanguageModel;
     private final GenerationProperties generationProperties;
+    private final PromptComposer promptComposer;
 
     /**
      * 按故事 ID 读取当前状态行。
@@ -141,15 +142,7 @@ public class StoryStateService {
     }
 
     private Excerpt excerptFromLlm(String generatedText) {
-        String prompt =
-                """
-                你是剧情摘录助手。根据下列新生成的小说正文，输出严格两行纯文本（不要引号、不要 markdown）：
-                第1行：用不超过80字概括本节剧情。
-                第2行：摘录结尾约200字以内、适合作为下轮续写锚点的文字（若正文不足200字则全文）。
-
-                正文：
-                """
-                + generatedText;
+        String prompt = promptComposer.buildStateExcerptPrompt(generatedText);
         String out = chatLanguageModel.chat(prompt);
         return parseTwoLineExcerpt(out, generatedText);
     }

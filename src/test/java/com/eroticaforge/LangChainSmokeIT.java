@@ -17,7 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 需要：数据库可连、Ollama bge-m3、llama-server。
+ * 需要：数据库可连、llama OpenAI 兼容嵌入端、llama-server（对话）。
  * PowerShell: {@code $env:EROTICA_RUN_LLM_SMOKE="true"; mvn -Dtest=LangChainSmokeIT test}
  *
  * @author EroticaForge
@@ -30,7 +30,7 @@ class LangChainSmokeIT {
     @Autowired
     ChatLanguageModel chatLanguageModel;
 
-    /** 注入的嵌入模型（Ollama bge-m3）。 */
+    /** 注入的嵌入模型（OpenAI 兼容 /v1/embeddings）。 */
     @Autowired
     EmbeddingModel embeddingModel;
 

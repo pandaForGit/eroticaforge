@@ -1,169 +1,273 @@
-以下是直接可以使用的 **API 接口定义.md** 模板，内容完整、结构清晰、适合你的 EroticaForge 项目。
+# API 接口定义
 
-你可以直接复制保存为 `docs/API 接口定义.md`
+**文档版本**：1.1  
+**更新日期**：2026-03-28  
+**项目名称**：EroticaForge（本地 NSFW 角色扮演小说生成工具）
+
+本文与 `src/main/java/com/eroticaforge/presentation` 下控制器保持一致；若实现变更，请同步更新本节「实现状态」。
 
 ---
 
-**API 接口定义.md**
+## 1. 总览
 
-**文档版本**：1.0  
-**更新日期**：2026-03-24  
-**项目名称**：EroticaForge - 本地 NSFW 角色扮演小说生成工具
+| 项 | 说明 |
+|----|------|
+| 风格 | REST JSON；生成支持 **SSE**（`text/event-stream`） |
+| Base URL | `http://localhost:{port}/api`，默认 `port=8090`（`server.port` / `SERVER_PORT`） |
+| 认证 | 当前版本**无** Token；单机本地使用 |
+| WebSocket | **未提供**；流式场景请用 SSE |
 
-### 1. 接口总览
+---
 
-本项目采用 **RESTful API + WebSocket/SSE** 混合架构：
+## 2. 通用响应格式
 
-- **REST API**：用于文档上传、故事管理、章节查询等非实时操作
-- **WebSocket / SSE**：用于小说实时流式生成（推荐使用 SSE，更简单）
+### 2.1 成功（多数 REST 接口）
 
-**Base URL**：`http://localhost:8080/api`
+HTTP 2xx，体为：
 
-### 2. 认证方式
-当前版本为单机本地工具，**暂不使用 Token 认证**。  
-未来多用户版本可增加 JWT 或简单 API Key。
-
-### 3. 核心接口列表
-
-#### 3.1 故事管理接口
-
-**1. 创建新故事**
-- **POST** `/api/stories`
 ```json
-Request Body:
 {
-  "title": "黑丝人妻的堕落调教",
-  "tags": ["NTR", "调教", "黑丝"]
-}
-
-Response 201:
-{
-  "storyId": "abc123",
-  "title": "黑丝人妻的堕落调教",
-  "createdAt": "2026-03-24T10:53:00"
+  "code": 200,
+  "message": "success",
+  "data": { }
 }
 ```
 
-**2. 获取故事列表**
-- **GET** `/api/stories`
+`data` 可为对象、数组或 `null`（如删除故事）。
 
-**3. 获取单个故事信息**
-- **GET** `/api/stories/{storyId}`
+对应类型：`com.eroticaforge.application.dto.api.ApiResponse`。
 
-**4. 删除故事**
-- **DELETE** `/api/stories/{storyId}`
+### 2.2 错误
 
-#### 3.2 文档上传与 RAG 管理
+HTTP 4xx/5xx，体为：
 
-**5. 上传文档（大纲、人物卡、章节总结等）**
-- **POST** `/api/stories/{storyId}/documents`
-- 支持 multipart/form-data（文件上传）
 ```json
-Request:
-- file: 文件（.txt 或 .pdf）
-- metadata: {"type": "character_card", "characterName": "林晓曼"}
-
-Response 200:
 {
-  "docId": "doc_001",
-  "fileName": "林晓曼人物卡.txt",
+  "code": 400,
+  "message": "参数错误",
+  "error": "具体原因（异常消息或摘要）"
+}
+```
+
+对应类型：`ApiErrorResponse`。常见：`400` 参数、`404` 资源不存在、`409` 乐观锁冲突、`413` 上传过大、`501` 能力未实现、`502` 上游 LLM/嵌入失败。
+
+### 2.3 健康检查（特例）
+
+`GET /api/health` **不**使用 `ApiResponse` 封装，直接返回扁平 JSON（见 3.8）。
+
+### 2.4 SSE 错误
+
+当请求的 `Accept` **仅**包含 `text/event-stream` 时，部分错误会以 SSE `event: error` 形式写出（见 `RestExceptionHandler`）。
+
+---
+
+## 3. 接口列表
+
+下表「状态」：`已完成` / `部分` / `未实现`。
+
+### 3.1 故事 CRUD
+
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 已完成 | `POST` | `/api/stories` | 创建故事 |
+| 已完成 | `GET` | `/api/stories` | 列表（按更新时间倒序） |
+| 已完成 | `GET` | `/api/stories/{storyId}` | 详情 |
+| 已完成 | `DELETE` | `/api/stories/{storyId}` | 删除（级联子表） |
+
+**POST `/api/stories` 请求体**
+
+```json
+{
+  "title": "标题",
+  "tags": ["标签1", "标签2"]
+}
+```
+
+`tags` 可省略或 `null`。
+
+**POST 响应**：HTTP **201**，`data` 为：
+
+```json
+{
+  "storyId": "uuid",
+  "title": "标题",
+  "createdAt": "2026-03-28T12:00:00Z"
+}
+```
+
+（`createdAt` 为 ISO-8601 瞬时时间，实际序列化以 Jackson 为准。）
+
+---
+
+### 3.2 文档上传与列表（RAG）
+
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 已完成 | `POST` | `/api/stories/{storyId}/documents` | `multipart/form-data` 上传 |
+| 已完成 | `GET` | `/api/stories/{storyId}/documents` | 已上传文档列表 |
+
+**POST 表单字段**
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `file` | 是 | **UTF-8 文本 `.txt`** |
+| `metadata` | 否 | JSON **字符串**，合并为业务 metadata |
+
+**限制**：单文件与总请求大小见 `spring.servlet.multipart`（默认约 10MB / 12MB）。**不支持 PDF**（上传 `.pdf` 返回 400）。
+
+**响应 `data` 示例**
+
+```json
+{
+  "docId": "…",
+  "fileName": "人物卡.txt",
   "chunkCount": 12,
   "status": "indexed"
 }
 ```
 
-**6. 查看已上传文档列表**
-- **GET** `/api/stories/{storyId}/documents`
+---
 
-#### 3.3 小说生成接口（核心）
+### 3.3 生成（SSE / 同步）
 
-**7. 流式生成下一段内容（推荐）**
-- **POST** `/api/stories/{storyId}/generate/stream` （SSE）
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 已完成 | `POST` | `/api/stories/{storyId}/generate/stream` | SSE 流式 |
+| 已完成 | `POST` | `/api/stories/{storyId}/generate` | 阻塞式一次生成 |
+
+**请求体（共用）**
+
 ```json
-Request Body:
 {
-  "prompt": "继续写下一段，推进到女主开始主动求欢",
+  "prompt": "续写指令或正文",
   "maxTokens": 800,
-  "useMultiModel": true          // true = 开启三步链（总结+生成）
+  "useMultiModel": false
 }
-
-Response: text/event-stream
-data: {"content": "女主颤抖着伸出手……", "type": "token"}
-data: {"content": "……", "type": "token"}
-data: {"done": true, "chapterId": "chap_016"}
 ```
 
-**8. 非流式生成（调试用）**
-- **POST** `/api/stories/{storyId}/generate`
-- 返回完整一段文本
+| 字段 | 说明 |
+|------|------|
+| `prompt` | **必填** |
+| `maxTokens` | 可选；当前由服务端模型配置主导，字段为预留 |
+| `useMultiModel` | 为 `true` 时返回 **HTTP 501**（多模型链未实现） |
 
-#### 3.4 章节与状态查询
+**SSE 事件**（`data:` 后为 JSON 字符串）
 
-**9. 获取章节列表**
-- **GET** `/api/stories/{storyId}/chapters`
+- 流式片段：`{"type":"token","content":"..."}`  
+- 结束：`{"type":"done","done":true,"chapterId":"..."}`  
+- 模型/后处理错误：`{"error":"..."}`  
 
-**10. 获取单章内容**
-- **GET** `/api/stories/{storyId}/chapters/{chapterId}`
+流结束后服务端会落库章节并更新 StoryState（见 `PostGenerationService`）。
 
-**11. 获取当前故事状态**
-- **GET** `/api/stories/{storyId}/state`
+**同步响应 `data`**
 
-**12. 手动更新故事状态（调试用）**
-- **PUT** `/api/stories/{storyId}/state`
-
-#### 3.5 其他辅助接口
-
-**13. 获取 Lorebook 列表**
-- **GET** `/api/lorebook`
-
-**14. 添加/修改 Lorebook 条目**
-- **POST** `/api/lorebook`
-
-**15. 系统健康检查**
-- **GET** `/api/health`
-  返回 llama-server、Ollama（embedding）、PostgreSQL、GPU 使用情况等
-
-### 4. 通用响应格式
-
-**成功响应**：
 ```json
 {
-  "code": 200,
-  "message": "success",
-  "data": { ... }
+  "text": "完整生成文本",
+  "chapterId": "…"
 }
 ```
-
-**错误响应**：
-```json
-{
-  "code": 400,
-  "message": "参数错误",
-  "error": "storyId cannot be null"
-}
-```
-
-### 5. WebSocket 接口（备选方案）
-
-如果后续想使用 WebSocket，可增加：
-- `/ws/story/{storyId}`  
-  客户端连接后，发送 JSON 指令即可触发生成，服务端实时推送 token。
-
-### 6. 注意事项
-- 所有生成接口均支持 `useMultiModel` 参数，控制是否开启总结模型 + 生成模型三步链。
-- 生成接口默认开启防重复机制（repeat_penalty + anti-loop prompt）。
-- 文件上传大小限制建议设为 10MB。
-- SSE 流结束时会返回 `done: true` 和本次生成的 `chapterId`。
 
 ---
 
-**下一步建议**：
-1. 将此文件保存到 `docs/API 接口定义.md`
-2. 根据实际开发进度，在每个接口后面补充「实现状态」字段（如：未实现 / 开发中 / 已完成）
+### 3.4 章节
 
-需要我继续帮你写下面任意一个文档的完整模板吗？
-- 安装部署指南.md
-- 核心 Service 实现指南.md
-- 用户操作手册.md
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 已完成 | `GET` | `/api/stories/{storyId}/chapters` | 章节摘要列表 |
+| 已完成 | `GET` | `/api/stories/{storyId}/chapters/{chapterId}` | 单章正文 |
 
-直接告诉我你要哪一个，我马上给你写好！
+---
+
+### 3.5 故事状态（StoryState）
+
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 已完成 | `GET` | `/api/stories/{storyId}/state` | 当前状态 |
+| 已完成 | `PUT` | `/api/stories/{storyId}/state` | 手动覆盖（调试） |
+
+**PUT 请求体**（`null` 字段表示不修改该项；`version` **必填**，与当前不一致时 **409**）
+
+```json
+{
+  "version": 1,
+  "currentSummary": "…",
+  "characterStates": { "角色": "状态" },
+  "importantFacts": ["事实"],
+  "worldFlags": ["标记"],
+  "lastChapterEnding": "…"
+}
+```
+
+---
+
+### 3.6 Lorebook
+
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 部分 | `GET` | `/api/lorebook` | 列出条目 |
+| 部分 | `POST` | `/api/lorebook` | 新增条目 |
+
+**说明**：当前为**内存存储**，进程重启后丢失；持久化与 PRD 完整对齐属后续迭代。
+
+---
+
+### 3.7 专题参考库（JSONL 导入）
+
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 未实现 | — | — | **无**对外 REST |
+
+业务类 `CorpusJsonlReferenceImporter#importFromJsonl` 已实现。运维入口：配置 **`erotica.corpus-import.enable=true`** 及 `jsonl-path`、`corpus-root`（或环境变量 `CORPUS_IMPORT_JSONL`、`CORPUS_IMPORT_ROOT`），启动时由 `CorpusJsonlImportApplicationRunner` 执行一次导入（示例见 `application-corpus-import.yml`）。仍无对外 REST。检索侧需配置 `erotica.rag.include-reference-corpus: true`（见 `docs/README.md`）。
+
+---
+
+### 3.8 健康检查
+
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 已完成 | `GET` | `/api/health` | DB、llama OpenAI 兼容端、Ollama（嵌入）探测 |
+
+**响应示例**（无 `ApiResponse` 包装）
+
+```json
+{
+  "status": "ok",
+  "database": "up",
+  "llm": "up",
+  "embedding": "up"
+}
+```
+
+失败项中对应字段可能为 `down: …` 等字符串说明。
+
+另：Spring Boot Actuator 可按 `management.endpoints.web.exposure.include` 暴露 `health`、`info`（路径通常为 `/actuator/*`，与上表独立）。
+
+---
+
+## 4. 与历史文档/前端的差异提示
+
+- 默认端口 **8090**，不是 8080。  
+- 上传仅保证 **`.txt`**；勿再宣传 PDF 已支持。  
+- `useMultiModel: true` → **501**，直至阶段 6 实现多模型链。  
+
+---
+
+## 5. 相关代码索引
+
+| 文档概念 | 代码位置 |
+|----------|----------|
+| 故事 CRUD | `StoryCrudController` |
+| 文档 | `StoryDocumentController` |
+| 生成 | `StoryGenerationController` |
+| 章节 | `StoryChapterController` |
+| 状态 | `StoryStateController` |
+| Lorebook | `LorebookController` |
+| 健康 | `HealthController` |
+| 错误体 | `RestExceptionHandler`、`ApiErrorResponse` |
+
+---
+
+## 6. 维护说明
+
+新增或变更接口时：更新本节表格与示例，并在 `docs/README.md`「已知差异」中检查是否需同步。

@@ -17,7 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 健康检查：进程、PostgreSQL、llama OpenAI 兼容端、Ollama（嵌入）。
+ * 健康检查：进程、PostgreSQL、llama OpenAI 兼容端（对话与嵌入，可不同端口）。
  *
  * @author EroticaForge
  */
@@ -35,20 +35,20 @@ public class HealthController {
 
     private final JdbcTemplate jdbcTemplate;
     private final String llmProbeUrl;
-    private final String ollamaProbeUrl;
+    private final String embeddingProbeUrl;
 
     /**
-     * @param jdbcTemplate    JDBC 模板
-     * @param llmBaseUrl      {@code langchain4j.open-ai.base-url}（通常以 /v1 结尾）
-     * @param ollamaBaseUrl   {@code langchain4j.ollama.base-url}
+     * @param jdbcTemplate       JDBC 模板
+     * @param llmBaseUrl         {@code langchain4j.open-ai.base-url}（通常以 /v1 结尾）
+     * @param embeddingBaseUrl   {@code langchain4j.open-ai.embedding-model.base-url}
      */
     public HealthController(
             JdbcTemplate jdbcTemplate,
             @Value("${langchain4j.open-ai.base-url}") String llmBaseUrl,
-            @Value("${langchain4j.ollama.base-url}") String ollamaBaseUrl) {
+            @Value("${langchain4j.open-ai.embedding-model.base-url}") String embeddingBaseUrl) {
         this.jdbcTemplate = jdbcTemplate;
         this.llmProbeUrl = trimTrailingSlash(llmBaseUrl) + "/models";
-        this.ollamaProbeUrl = trimTrailingSlash(ollamaBaseUrl) + "/api/tags";
+        this.embeddingProbeUrl = trimTrailingSlash(embeddingBaseUrl) + "/models";
     }
 
     /**
@@ -62,7 +62,7 @@ public class HealthController {
         body.put("status", "ok");
         body.put("database", checkDatabase());
         body.put("llm", pingHttp(llmProbeUrl));
-        body.put("embedding", pingHttp(ollamaProbeUrl));
+        body.put("embedding", pingHttp(embeddingProbeUrl));
         return ResponseEntity.ok(body);
     }
 

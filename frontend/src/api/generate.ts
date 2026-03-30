@@ -30,9 +30,17 @@ export async function generateSync(
   )
 }
 
+export type StreamDonePayload = {
+  chapterId: string
+  /** 落库用的最终正文长度；0 表示模型未返回可见正文 */
+  generatedChars: number
+  tokenFrames?: number
+  nonEmptyTokenFrames?: number
+}
+
 export type StreamGenerateHandlers = {
   onToken: (chunk: string) => void
-  onDone: (chapterId: string) => void
+  onDone: (payload: StreamDonePayload) => void
   onStreamError: (message: string) => void
 }
 
@@ -111,13 +119,47 @@ export async function streamGenerate(
   const decoder = new TextDecoder()
   let buffer = ''
 
+  const extractCompleteLines = (buf: string): { rest: string; lines: string[] } => {
+    const lines: string[] = []
+    let start = 0
+    for (let i = 0; i < buf.length; i++) {
+      if (buf.charCodeAt(i) === 0x0a) {
+        let line = buf.slice(start, i)
+        if (line.endsWith('\r')) {
+          line = line.slice(0, -1)
+        }
+        lines.push(line)
+        start = i + 1
+      }
+    }
+    return { rest: buf.slice(start), lines }
+  }
+
   const flushLine = (line: string) => {
     const obj = parseSseDataLine(line)
     if (!obj) return
     const doneByFlag = obj.done === true
     const doneByType = obj.type === 'done'
     if ((doneByFlag || doneByType) && typeof obj.chapterId === 'string') {
-      handlers.onDone(obj.chapterId)
+      const gen =
+        typeof obj.generatedChars === 'number' && Number.isFinite(obj.generatedChars)
+          ? obj.generatedChars
+          : 0
+      const tf =
+        typeof obj.tokenFrames === 'number' && Number.isFinite(obj.tokenFrames)
+          ? obj.tokenFrames
+          : undefined
+      const netf =
+        typeof obj.nonEmptyTokenFrames === 'number' &&
+        Number.isFinite(obj.nonEmptyTokenFrames)
+          ? obj.nonEmptyTokenFrames
+          : undefined
+      handlers.onDone({
+        chapterId: obj.chapterId,
+        generatedChars: gen,
+        tokenFrames: tf,
+        nonEmptyTokenFrames: netf,
+      })
       return
     }
     if (typeof obj.error === 'string') {
@@ -133,15 +175,16 @@ export async function streamGenerate(
     for (;;) {
       const { done, value } = await reader.read()
       buffer += decoder.decode(value, { stream: !done })
-      const parts = buffer.split('\n')
-      buffer = parts.pop() ?? ''
-      for (const line of parts) {
+      const { rest, lines } = extractCompleteLines(buffer)
+      buffer = rest
+      for (const line of lines) {
         flushLine(line)
       }
       if (done) break
     }
-    if (buffer.trim()) {
-      for (const line of buffer.split('\n')) {
+    if (buffer.length > 0) {
+      const { lines } = extractCompleteLines(buffer + '\n')
+      for (const line of lines) {
         flushLine(line)
       }
     }

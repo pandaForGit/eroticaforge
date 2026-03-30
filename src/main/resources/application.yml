@@ -30,7 +30,9 @@ mybatis-plus:
     db-config:
       id-type: input
 
-# llama.cpp OpenAI 兼容（你本机为 localhost:8080）
+# llama.cpp OpenAI 兼容：对话默认 8080；嵌入可单独起 llama-server（默认 8081，POST /v1/embeddings）
+# 流式无字且日志「ChatResponse 为 null」：Qwen3 等可能把流式正文放在 reasoning_content，LangChain4j 1.0.0-beta2 的 OpenAI 兼容层只认 delta.content。
+# 可升级 LangChain4j 至 1.0.0+ 并开启 returnThinking，或在 llama-server 关闭 thinking，使输出走 content。
 langchain4j:
   open-ai:
     base-url: ${LLM_BASE_URL:http://localhost:8080/v1}
@@ -39,19 +41,20 @@ langchain4j:
       model-name: ${LLM_MODEL:Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf}
       temperature: 0.9
       max-tokens: 2048
-
-  ollama:
-    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-    embedding:
-      # 嵌入失败时不重试（默认 0）。Ollama 若返回 NaN 会连错 3 次并刷屏 WARN；RAG 侧已降级为空上下文。
-      max-retries: ${OLLAMA_EMBEDDING_MAX_RETRIES:0}
-      options:
-        model: ${OLLAMA_EMBEDDING_MODEL:bge-m3}
+    # OpenAI 兼容嵌入（LangChain4j 在 base-url 上请求 /embeddings，故填到 /v1 即可，勿写完整 .../embeddings）
+    embedding-model:
+      base-url: ${LLAMA_EMBEDDING_BASE_URL:http://127.0.0.1:8081/v1}
+      api-key: ${LLAMA_EMBEDDING_API_KEY:sk-anything}
+      model-name: ${LLAMA_EMBEDDING_MODEL:text-embedding}
+      max-retries: ${LLAMA_EMBEDDING_MAX_RETRIES:0}
 
 logging:
   level:
-    # 单次嵌入失败时 RetryUtils 会对每次重试打 WARN+堆栈；嵌入已 max-retries=0 时通常不再触发，保留可压制其它客户端噪声
+    # 单次嵌入失败时 RetryUtils 会对每次重试打 WARN+堆栈；max-retries=0 时通常不再触发，保留可压制其它客户端噪声
     dev.langchain4j.internal.RetryUtils: ERROR
+    # 流式无 token（tokenFrames=0）时，可临时打开以查看 OpenAI 兼容客户端与 SSE 解析（日志量很大，用完请关掉）
+    # dev.langchain4j.model.openai: DEBUG
+    # dev.langchain4j.http.client: DEBUG
 
 # LangChain4j PgVector：由库自动建表（与 sql/001 中 erotica_rag_chunks 并存，后续可统一）
 erotica:
@@ -66,17 +69,32 @@ erotica:
     top-k: 10
     min-score: 0.75
     augment-query-with-summary: true
+    # 单次 RAG 查询嵌入最大字符数（llama-server 默认 ubatch 512 时，长中文易超 token；可按模型调大，需同步提高嵌入端 --ubatch-size）
+    query-embed-max-chars: 700
     search-overfetch-multiplier: 3
     # 数据分析模块 JSONL 导入参考库时使用的 story_id（erotica_documents / 向量 metadata）
     reference-corpus-story-id: system-corpus-reference
     # 是否在检索时合并参考库（与当前 story 的文档一起参与召回）；导入后改为 true 才生效
-    include-reference-corpus: false
+    include-reference-corpus: true
+  # enable=true 时启动后执行一次参考库 JSONL 导入（CorpusJsonlImportApplicationRunner）；详见 application-corpus-import.yml
+  corpus-import:
+    enable: false
+    jsonl-path: ${CORPUS_IMPORT_JSONL:F:\project\ai\ai-writer\dataAnalysisModule\out\corpus_classification.jsonl}
+    corpus-root: ${CORPUS_IMPORT_ROOT:F:\project\ai\ai-writer\dataAnalysisModule\src\main\resources\小说}
   # 阶段 4：生成闭环（见 GenerationProperties）
   generation:
     reindex-chapter-to-rag: false
     state-summary-max-chars: 120
     last-ending-tail-chars: 400
     use-llm-for-state-excerpt: true
+  # 提示词（见 PromptProperties / PromptComposer）；默认在代码中，可在此或 application-local.yml 覆盖
+  # 生成主模板占位符：{{globalSystem}}、{{currentSummary}}、{{characterStates}}、{{importantFacts}}、
+  # {{lastChapterEnding}}、{{ragContext}}、{{loreTriggers}}、{{userPrompt}}
+  # 状态摘录模板占位符：{{generatedText}}
+  prompt:
+    rag:
+      recall-chunk: 回忆
+      reference-chunk: 参考
 
 management:
   endpoints:

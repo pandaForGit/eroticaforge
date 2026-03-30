@@ -1,6 +1,8 @@
 package com.eroticaforge;
 
+import com.eroticaforge.config.CorpusImportProperties;
 import com.eroticaforge.config.GenerationProperties;
+import com.eroticaforge.config.PromptProperties;
 import com.eroticaforge.config.RagProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,7 +14,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  * @author EroticaForge
  */
 @SpringBootApplication
-@EnableConfigurationProperties({RagProperties.class, GenerationProperties.class})
+@EnableConfigurationProperties({
+    RagProperties.class,
+    GenerationProperties.class,
+    PromptProperties.class,
+    CorpusImportProperties.class
+})
 public class EroticaForgeApplication {
 
     /**

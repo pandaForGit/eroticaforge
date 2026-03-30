@@ -4,8 +4,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
@@ -17,7 +17,7 @@ import javax.sql.DataSource;
 import java.time.Duration;
 
 /**
- * LangChain4j 与 llama-server（OpenAI 兼容）、Ollama 嵌入、PgVector 的配置。
+ * LangChain4j 与 llama-server（OpenAI 兼容：对话 + 嵌入）、PgVector 的配置。
  *
  * <p>Bean 命名与构造遵循《阿里巴巴 Java 开发手册》：配置类仅做装配，不包含业务分支。
  *
@@ -83,20 +83,24 @@ public class LangChainConfig {
     }
 
     /**
-     * Ollama 嵌入模型（如 bge-m3）。
+     * 嵌入模型（OpenAI 兼容 {@code /v1/embeddings}，如单独端口的 llama-server）。
      *
-     * @param baseUrl   Ollama 服务地址
-     * @param modelName 嵌入模型名
+     * @param baseUrl   含 {@code /v1} 的 base-url（与 chat 可不同端口）
+     * @param apiKey    API Key（本地占位即可）
+     * @param modelName 请求体中的 model 字段（llama.cpp 常可填占位或与加载模型一致）
+     * @param maxRetries 失败重试次数
      * @return {@link EmbeddingModel} Bean
      */
     @Bean
     public EmbeddingModel embeddingModel(
-            @Value("${langchain4j.ollama.base-url}") String baseUrl,
-            @Value("${langchain4j.ollama.embedding.options.model}") String modelName,
-            @Value("${langchain4j.ollama.embedding.max-retries:0}") int maxRetries) {
+            @Value("${langchain4j.open-ai.embedding-model.base-url}") String baseUrl,
+            @Value("${langchain4j.open-ai.embedding-model.api-key}") String apiKey,
+            @Value("${langchain4j.open-ai.embedding-model.model-name}") String modelName,
+            @Value("${langchain4j.open-ai.embedding-model.max-retries:0}") int maxRetries) {
         Duration embedTimeout = Duration.ofMinutes(2);
-        return OllamaEmbeddingModel.builder()
+        return OpenAiEmbeddingModel.builder()
                 .baseUrl(baseUrl)
+                .apiKey(apiKey)
                 .modelName(modelName)
                 .timeout(embedTimeout)
                 .maxRetries(Math.max(0, maxRetries))

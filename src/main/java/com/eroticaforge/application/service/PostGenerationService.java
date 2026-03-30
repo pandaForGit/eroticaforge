@@ -87,12 +87,21 @@ public class PostGenerationService {
         }
 
         long ms = (System.nanoTime() - t0) / 1_000_000L;
+        int contentChars = generatedText.length();
         log.info(
-                "PostGeneration 完成 storyId={} chapterId={} seq={} 耗时{}ms",
+                "PostGeneration 完成 storyId={} chapterId={} seq={} contentChars={} userPromptChars={} 耗时{}ms",
                 storyId,
                 chapterId,
                 seq,
+                contentChars,
+                userPrompt != null ? userPrompt.length() : 0,
                 ms);
+        if (contentChars == 0) {
+            log.warn(
+                    "PostGeneration 写入章节正文为空 storyId={} chapterId={}（流式/同步均未拿到模型输出时可对照 SSE tokenFrames 与 LangChain 日志）",
+                    storyId,
+                    chapterId);
+        }
         return new PostGenerationResult(chapterId, seq);
     }
 

@@ -28,7 +28,13 @@ public class RagProperties {
     private boolean augmentQueryWithSummary = true;
 
     /**
-     * 按 story 过滤时在向量库侧多取倍数，再内存过滤（避免部分实现不支持 Metadata {@code Filter}）。
+     * 送入嵌入模型的查询文本最大字符数（query ± 摘要拼接后截断）。llama-server 默认 {@code ubatch-size=512} 时，
+     * 中文偏多的长 prompt 易超过单次嵌入 token 上限；默认 700 字量级对应 llama ubatch 512 较稳妥，调大前请先提高嵌入端 batch。
+     */
+    private int queryEmbedMaxChars = 700;
+
+    /**
+     * 在已应用 metadata 范围过滤（当前故事 ± 参考库）的前提下，多取若干条再取 top-k，缓解分数边界波动。
      */
     private int searchOverfetchMultiplier = 3;
 
@@ -80,6 +86,14 @@ public class RagProperties {
 
     public void setAugmentQueryWithSummary(boolean augmentQueryWithSummary) {
         this.augmentQueryWithSummary = augmentQueryWithSummary;
+    }
+
+    public int getQueryEmbedMaxChars() {
+        return queryEmbedMaxChars;
+    }
+
+    public void setQueryEmbedMaxChars(int queryEmbedMaxChars) {
+        this.queryEmbedMaxChars = Math.max(0, queryEmbedMaxChars);
     }
 
     public int getSearchOverfetchMultiplier() {

@@ -1,8 +1,12 @@
 package com.eroticaforge.application.service;
 
 import com.eroticaforge.config.RagProperties;
+import com.eroticaforge.domain.Story;
+import com.eroticaforge.domain.StoryState;
 import com.eroticaforge.domain.UploadedDocument;
 import com.eroticaforge.infrastructure.persistence.DocumentRepository;
+import com.eroticaforge.infrastructure.persistence.StoryRepository;
+import com.eroticaforge.infrastructure.persistence.StoryStateRepository;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -15,6 +19,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -40,9 +45,14 @@ public class RagIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(RagIngestionService.class);
 
+    /** 占位故事标题：仅用于满足 {@code erotica_documents} 对 {@code erotica_stories} 的外键。 */
+    private static final String REFERENCE_CORPUS_STORY_TITLE = "专题参考语料（系统）";
+
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final DocumentRepository documentRepository;
+    private final StoryRepository storyRepository;
+    private final StoryStateRepository storyStateRepository;
     private final RagProperties ragProperties;
 
     /**
@@ -111,9 +121,33 @@ public class RagIngestionService {
         if (!StringUtils.hasText(corpusStoryId)) {
             throw new IllegalArgumentException("corpusStoryId 不能为空");
         }
+        ensureReferenceCorpusStoryRow(corpusStoryId);
         String label = StringUtils.hasText(fileLabel) ? fileLabel : "corpus.txt";
         return ingestTextInternal(
                 corpusStoryId, text, RagMetadataKeys.SOURCE_REFERENCE, label, metadata);
+    }
+
+    /**
+     * 参考库文档行的 {@code story_id} 须存在于 {@code erotica_stories}（外键）；首次导入前插入占位故事与初始 StoryState。
+     */
+    private void ensureReferenceCorpusStoryRow(String storyId) {
+        if (storyRepository.findById(storyId).isPresent()) {
+            return;
+        }
+        Instant now = Instant.now();
+        Story placeholder = Story.newDraft(storyId, REFERENCE_CORPUS_STORY_TITLE, List.of(), null, now);
+        try {
+            storyRepository.insert(placeholder);
+            storyStateRepository.insertInitialIfAbsent(StoryState.empty(storyId, now));
+            log.info("已创建参考库占位故事 storyId={} title={}", storyId, REFERENCE_CORPUS_STORY_TITLE);
+        } catch (DataIntegrityViolationException ex) {
+            if (storyRepository.findById(storyId).isPresent()) {
+                log.debug("参考库占位故事已存在（并发或重复创建）storyId={}", storyId);
+                storyStateRepository.insertInitialIfAbsent(StoryState.empty(storyId, Instant.now()));
+                return;
+            }
+            throw ex;
+        }
     }
 
     /**

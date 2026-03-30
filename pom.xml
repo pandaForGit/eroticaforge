@@ -15,7 +15,7 @@
     <artifactId>eroticaforge</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>EroticaForge</name>
-    <description>本地 NSFW 角色扮演小说生成 - 后端</description>
+    <description>?? NSFW ???????? - ??</description>
 
     <properties>
         <java.version>21</java.version>
@@ -46,7 +46,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <!-- 默认 compile：持久层 TypeHandler 需引用 PGobject -->
+            <!-- ?? compile???? TypeHandler ??? PGobject -->
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -61,11 +61,6 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-ollama</artifactId>
             <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
@@ -86,13 +81,13 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
-            <!-- 阿里巴巴 P3C（PMD）：与手册配套的静态规则，见 https://github.com/alibaba/p3c -->
+            <!-- ???? P3C?PMD???????????????https://github.com/alibaba/p3c -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
                 <version>${maven-pmd-plugin.version}</version>
                 <configuration>
-                    <!-- PMD 6.x（随 3.21.2）不支持 targetJdk=21；省略则由插件按源码推断 -->
+                    <!-- PMD 6.x?? 3.21.2???? targetJdk=21???????????? -->
                     <excludeRoots>
                         <excludeRoot>src/test/java</excludeRoot>
                     </excludeRoots>

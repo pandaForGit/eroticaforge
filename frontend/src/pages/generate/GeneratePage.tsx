@@ -97,10 +97,24 @@ export function GeneratePage() {
         body,
         {
           onToken: (chunk) => setOutput((prev) => prev + chunk),
-          onDone: (chapterId) => {
+          onDone: ({ chapterId, generatedChars, tokenFrames, nonEmptyTokenFrames }) => {
             sawDone = true
             setLastChapterId(chapterId)
-            showInfo(`生成完成，章节 ID：${chapterId}`)
+            if (generatedChars === 0) {
+              setOutput((prev) => {
+                if (prev && prev.length > 0) return prev
+                const tf =
+                  tokenFrames != null && nonEmptyTokenFrames != null
+                    ? `（后端 token 帧 ${tokenFrames}，其中非空 ${nonEmptyTokenFrames}）`
+                    : ''
+                return `（本轮未收到可见正文，已落库空章节。${tf}请查后端 WARN「模型结束但正文为空」与 llama-server 流式配置。）`
+              })
+              showError(
+                `生成结束但正文长度为 0，章节 ID：${chapterId}。请对照后端日志与 OpenAI 兼容服务的 stream 输出。`,
+              )
+            } else {
+              showInfo(`生成完成，章节 ID：${chapterId}，正文约 ${generatedChars} 字`)
+            }
           },
           onStreamError: (msg) => {
             sawStreamErr = true
@@ -145,6 +159,9 @@ export function GeneratePage() {
       const res = await generateSync(storyId, body)
       setOutput(res.text)
       setLastChapterId(res.chapterId)
+      if (res.ragWarning) {
+        showError(res.ragWarning)
+      }
       showInfo(`非流式生成完成，章节 ID：${res.chapterId}`)
       scrollOutputToBottom()
     } catch (e) {

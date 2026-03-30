@@ -43,10 +43,14 @@ public final class RagMetadataKeys {
     /** 语料标题（与 JSONL {@code title} 一致）。 */
     public static final String CORPUS_TITLE = "corpus_title";
 
-    /** 检索结果格式化：参考库段落标签。 */
+    /**
+     * 检索结果格式化：参考库段落标签的代码侧默认值；实际展示以 {@code erotica.prompt.rag.reference-chunk} 为准。
+     */
     public static final String CONTEXT_TAG_REFERENCE = "参考";
 
-    /** 检索结果格式化时的默认段落标签（与 Prompt 中「回忆」用语一致）。 */
+    /**
+     * 检索结果格式化：默认段落标签的代码侧默认值；实际展示以 {@code erotica.prompt.rag.recall-chunk} 为准。
+     */
     public static final String CONTEXT_TAG_RECALL = "回忆";
 
     /** 元数据中的切块数量（写入 {@code erotica_documents.metadata}）。 */
