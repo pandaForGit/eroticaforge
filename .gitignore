@@ -15,3 +15,5 @@
 dataAnalysisModule/out/
 # Local novel corpus — do not commit (large / private)
 dataAnalysisModule/src/main/resources/小说/
+# Local scratch / decompiled artifacts (do not version)
+dev/

@@ -3,6 +3,8 @@
 # 详细日志：追加 --spring.profiles.active=debug（见 application-debug.yml）
 server:
   port: ${SERVER_PORT:8090}
+  # 显式绑定所有网卡；未设置时 Spring 通常已是全网卡，此处避免误解并支持仅本机：SERVER_ADDRESS=127.0.0.1
+  address: ${SERVER_ADDRESS:0.0.0.0}
 spring:
   application:
     name: eroticaforge
@@ -40,7 +42,7 @@ langchain4j:
     chat-model:
       model-name: ${LLM_MODEL:Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf}
       temperature: 0.9
-      max-tokens: 2048
+      max-tokens: 4096
     # OpenAI 兼容嵌入（LangChain4j 在 base-url 上请求 /embeddings，故填到 /v1 即可，勿写完整 .../embeddings）
     embedding-model:
       base-url: ${LLAMA_EMBEDDING_BASE_URL:http://127.0.0.1:8081/v1}

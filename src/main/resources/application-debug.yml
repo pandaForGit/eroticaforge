@@ -1,2 +1,0 @@
-# 启用方式：启动参数增加 --spring.profiles.active=debug
-# 或在 application-local.yml 中写：spring.profiles.active: debug

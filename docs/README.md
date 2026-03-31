@@ -59,6 +59,7 @@
 
 - [`quality/测试计划与测试用例.md`](quality/测试计划与测试用例.md)  
 - [`guides/用户操作手册.md`](guides/用户操作手册.md)  
+- [`guides/Tailscale与RDP远程桌面方案.md`](guides/Tailscale与RDP远程桌面方案.md) — 个人环境用 Tailscale 虚拟组网 + Windows RDP 远程桌面（非业务依赖，通用说明）  
 - `prompts/` 下交接类文档 — 给后续 Agent / 开发者的上下文说明  
 
 ---
