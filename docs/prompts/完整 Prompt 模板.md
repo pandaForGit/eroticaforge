@@ -28,6 +28,10 @@ String GLOBAL_SYSTEM_PROMPT = """
 """;
 ```
 
+### 1.1 人物快照占位符（`PromptComposer` / `erotica.prompt.generation.userTemplate`）
+
+生成主模板已支持 **`{{characterProfiles}}`**：内容由 `StoryCharacterSnapshotService` 根据 `erotica_story_character_snapshots` 表格式化（与 RAG 无关，DB 直出）。无快照时由 `erotica.prompt.placeholders.emptyCharacterProfiles` 填充（默认「（本故事暂无人物快照）」）。区块标题建议：「本故事人物设定（快照，写作须与人设一致）」，置于 RAG 块**之前**。
+
 ### 2. 完整 Prompt 组装模板（单模型基础版 - buildFullPrompt 方法中使用）
 
 ```java
@@ -41,6 +45,9 @@ String fullPrompt = """
 {state.getCharacterStatesFormatted()}   // 示例：女主：情绪=羞耻+兴奋，位置=卧室，秘密=已暴露性癖
 重要事件列表：{state.getImportantEvents()}
 上次章节结尾：{state.getLastChapterEnding()}
+
+### 本故事人物设定（快照）
+{characterProfiles}
 
 ### RAG 召回的相关记忆（严格参考这些内容）
 {ragContext}   // 来自 pgvector EmbeddingStore 的 top-k chunks，已格式化为带 [回忆1]、[人物卡] 等标签

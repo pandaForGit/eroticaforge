@@ -28,22 +28,32 @@ public class PromptComposer {
     }
 
     /**
-     * 组装单轮生成用完整 user 侧 Prompt（含系统规则与状态、RAG、Lorebook、用户输入）。
+     * 组装单轮生成用完整 user 侧 Prompt（含系统规则与状态、人物快照、RAG、Lorebook、用户输入）。
      *
-     * @param state        当前故事状态，不可为 {@code null}
-     * @param ragContext   RAG 检索结果文本，可为空串
-     * @param loreTriggers Lorebook 触发说明，可为空串
-     * @param userPrompt   用户本轮指令或续写提示，不可为 {@code null}
+     * @param state              当前故事状态，不可为 {@code null}
+     * @param characterProfiles  本故事人物快照格式化文本，可为空串
+     * @param ragContext         RAG 检索结果文本，可为空串
+     * @param loreTriggers       Lorebook 触发说明，可为空串
+     * @param taskConstraints    本轮结构化任务（意图解析），可为空串
+     * @param userPrompt         用户本轮指令或续写提示，不可为 {@code null}
      * @return 送入流式/同步聊天的完整字符串
      */
     public String buildFullPrompt(
-            StoryState state, String ragContext, String loreTriggers, String userPrompt) {
+            StoryState state,
+            String characterProfiles,
+            String ragContext,
+            String loreTriggers,
+            String taskConstraints,
+            String userPrompt) {
         PromptProperties.Placeholders ph = promptProperties.getPlaceholders();
+        String profiles = characterProfiles != null ? characterProfiles : "";
         String rag = ragContext != null ? ragContext : "";
         String lore = loreTriggers != null ? loreTriggers : "";
         String user = userPrompt != null ? userPrompt : "";
+        String task = taskConstraints != null ? taskConstraints : "";
 
         Map<String, String> vars = new LinkedHashMap<>();
+        vars.put("taskConstraints", task);
         vars.put("globalSystem", promptProperties.getGeneration().getGlobalSystem());
         vars.put("currentSummary", blankToPlaceholder(state.getCurrentSummary(), ph.getEmptyField()));
         vars.put(
@@ -53,6 +63,9 @@ public class PromptComposer {
         vars.put(
                 "lastChapterEnding",
                 blankToPlaceholder(state.getLastChapterEnding(), ph.getEmptyField()));
+        vars.put(
+                "characterProfiles",
+                blankToPlaceholder(profiles, ph.getEmptyCharacterProfiles()));
         vars.put("ragContext", rag);
         vars.put("loreTriggers", blankToPlaceholder(lore, ph.getEmptyField()));
         vars.put("userPrompt", user);

@@ -18,6 +18,10 @@
 | `erotica_rag_chunks` | RAG 向量块：文本片段 + **embedding** + metadata（JSONB） |
 | `erotica_chapter_seq` | 可按故事维度的章节序号（也可用序列或 `stories` 内计数器列） |
 | `erotica_lorebook` | 全局或按故事的 Lorebook 关键词 → 描写文本 |
+| `erotica_character_library` | 人物卡库（JSONL 导入母卡；`UNIQUE(content_sha256, role_index)`） |
+| `erotica_story_character_snapshots` | 故事人物快照（可编辑；随故事 `ON DELETE CASCADE`） |
+
+建表脚本：`sql/002_character_library_and_snapshots.sql`（在 `001_init_pgvector.sql` 之后执行）。
 
 ### 3. 详细字段示例
 

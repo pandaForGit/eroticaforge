@@ -42,7 +42,9 @@ public class LangChainConfig {
             @Value("${langchain4j.open-ai.api-key}") String apiKey,
             @Value("${langchain4j.open-ai.chat-model.model-name}") String modelName,
             @Value("${langchain4j.open-ai.chat-model.temperature}") double temperature,
-            @Value("${langchain4j.open-ai.chat-model.max-tokens}") int maxTokens) {
+            @Value("${langchain4j.open-ai.chat-model.max-tokens}") int maxTokens,
+            @Value("${langchain4j.open-ai.chat-model.frequency-penalty:0.35}") double frequencyPenalty,
+            @Value("${langchain4j.open-ai.chat-model.presence-penalty:0.05}") double presencePenalty) {
         Duration requestTimeout = Duration.ofMinutes(10);
         return OpenAiChatModel.builder()
                 .baseUrl(baseUrl)
@@ -50,6 +52,8 @@ public class LangChainConfig {
                 .modelName(modelName)
                 .temperature(temperature)
                 .maxTokens(maxTokens)
+                .frequencyPenalty(frequencyPenalty)
+                .presencePenalty(presencePenalty)
                 .timeout(requestTimeout)
                 .build();
     }
@@ -70,7 +74,9 @@ public class LangChainConfig {
             @Value("${langchain4j.open-ai.api-key}") String apiKey,
             @Value("${langchain4j.open-ai.chat-model.model-name}") String modelName,
             @Value("${langchain4j.open-ai.chat-model.temperature}") double temperature,
-            @Value("${langchain4j.open-ai.chat-model.max-tokens}") int maxTokens) {
+            @Value("${langchain4j.open-ai.chat-model.max-tokens}") int maxTokens,
+            @Value("${langchain4j.open-ai.chat-model.frequency-penalty:0.35}") double frequencyPenalty,
+            @Value("${langchain4j.open-ai.chat-model.presence-penalty:0.05}") double presencePenalty) {
         Duration streamTimeout = Duration.ofMinutes(10);
         return OpenAiStreamingChatModel.builder()
                 .baseUrl(baseUrl)
@@ -78,6 +84,8 @@ public class LangChainConfig {
                 .modelName(modelName)
                 .temperature(temperature)
                 .maxTokens(maxTokens)
+                .frequencyPenalty(frequencyPenalty)
+                .presencePenalty(presencePenalty)
                 .timeout(streamTimeout)
                 .build();
     }

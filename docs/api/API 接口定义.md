@@ -1,7 +1,7 @@
 # API 接口定义
 
-**文档版本**：1.1  
-**更新日期**：2026-03-28  
+**文档版本**：1.2  
+**更新日期**：2026-04-03  
 **项目名称**：EroticaForge（本地 NSFW 角色扮演小说生成工具）
 
 本文与 `src/main/java/com/eroticaforge/presentation` 下控制器保持一致；若实现变更，请同步更新本节「实现状态」。
@@ -53,7 +53,7 @@ HTTP 4xx/5xx，体为：
 
 ### 2.3 健康检查（特例）
 
-`GET /api/health` **不**使用 `ApiResponse` 封装，直接返回扁平 JSON（见 3.8）。
+`GET /api/health` **不**使用 `ApiResponse` 封装，直接返回扁平 JSON（见 3.9）。
 
 ### 2.4 SSE 错误
 
@@ -79,11 +79,12 @@ HTTP 4xx/5xx，体为：
 ```json
 {
   "title": "标题",
-  "tags": ["标签1", "标签2"]
+  "tags": ["标签1", "标签2"],
+  "libraryCharacterIds": ["库卡UUID-1", "库卡UUID-2"]
 }
 ```
 
-`tags` 可省略或 `null`。
+`tags` 可省略或 `null`。`libraryCharacterIds` 可选：有序；服务端为每个 ID 在故事下插入**人物快照**（深拷贝库中 payload）；重复 ID 会去重保序。非法 ID 返回 **400**。
 
 **POST 响应**：HTTP **201**，`data` 为：
 
@@ -99,7 +100,27 @@ HTTP 4xx/5xx，体为：
 
 ---
 
-### 3.2 文档上传与列表（RAG）
+### 3.2 人物卡库与故事人物快照
+
+| 状态 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 已完成 | `GET` | `/api/character-library` | 人物卡库列表/搜索 |
+| 已完成 | `GET` | `/api/stories/{storyId}/character-snapshots` | 本故事快照列表（已排序） |
+| 已完成 | `POST` | `/api/stories/{storyId}/character-snapshots` | 新增快照（从库克隆或手写 `payload`） |
+| 已完成 | `PATCH` | `/api/stories/{storyId}/character-snapshots/{snapshotId}` | 改 `sortOrder` 或整体替换 `payload` |
+| 已完成 | `DELETE` | `/api/stories/{storyId}/character-snapshots/{snapshotId}` | 删除快照 |
+| 已完成 | `PUT` | `/api/stories/{storyId}/character-snapshots/order` | 重排：body `{"snapshotIds":["…"]}` 须覆盖本故事全部快照 |
+
+**GET `/api/character-library` 查询参数**：`query`（可选，模糊匹配展示名/源路径）、`limit`（默认 200，最大 500）。
+
+**POST 快照请求体示例（从库克隆）**：`{"libraryCharacterId":"uuid"}`。  
+**POST 快照请求体示例（手写）**：`{"payload":{"name":"角色","personality":"…"}}`（`payload` 须为对象，可为 `{}`）。
+
+人物卡库数据由 `sql/002_character_library_and_snapshots.sql` 建表后，通过配置 `erotica.character-cards-import.enable=true` 在启动时导入 JSONL，或后续扩展管理端导入。
+
+---
+
+### 3.3 文档上传与列表（RAG）
 
 | 状态 | 方法 | 路径 | 说明 |
 |------|------|------|------|
@@ -128,7 +149,7 @@ HTTP 4xx/5xx，体为：
 
 ---
 
-### 3.3 生成（SSE / 同步）
+### 3.4 生成（SSE / 同步）
 
 | 状态 | 方法 | 路径 | 说明 |
 |------|------|------|------|
@@ -170,7 +191,7 @@ HTTP 4xx/5xx，体为：
 
 ---
 
-### 3.4 章节
+### 3.5 章节
 
 | 状态 | 方法 | 路径 | 说明 |
 |------|------|------|------|
@@ -179,7 +200,7 @@ HTTP 4xx/5xx，体为：
 
 ---
 
-### 3.5 故事状态（StoryState）
+### 3.6 故事状态（StoryState）
 
 | 状态 | 方法 | 路径 | 说明 |
 |------|------|------|------|
@@ -201,7 +222,7 @@ HTTP 4xx/5xx，体为：
 
 ---
 
-### 3.6 Lorebook
+### 3.7 Lorebook
 
 | 状态 | 方法 | 路径 | 说明 |
 |------|------|------|------|
@@ -212,7 +233,7 @@ HTTP 4xx/5xx，体为：
 
 ---
 
-### 3.7 专题参考库（JSONL 导入）
+### 3.8 专题参考库（JSONL 导入）
 
 | 状态 | 方法 | 路径 | 说明 |
 |------|------|------|------|
@@ -222,7 +243,7 @@ HTTP 4xx/5xx，体为：
 
 ---
 
-### 3.8 健康检查
+### 3.9 健康检查
 
 | 状态 | 方法 | 路径 | 说明 |
 |------|------|------|------|

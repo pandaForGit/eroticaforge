@@ -49,7 +49,8 @@ public class RagRetrievalService {
      * @return 格式化后的 RAG 文本；无命中时返回空串；失败时由 {@link #retrieveRelevantContextResult(String, StoryState)} 携带说明
      */
     public String retrieveRelevantContext(String query, StoryState state) {
-        return retrieveRelevantContextResult(query, state).context();
+        return retrieveRelevantContextResult(query, state, RagRetrievalModifiers.defaults())
+                .context();
     }
 
     /**
@@ -60,6 +61,14 @@ public class RagRetrievalService {
      * @return 上下文与可选失败说明
      */
     public RagRetrievalResult retrieveRelevantContextResult(String query, StoryState state) {
+        return retrieveRelevantContextResult(query, state, RagRetrievalModifiers.defaults());
+    }
+
+    /**
+     * 与 {@link #retrieveRelevantContextResult(String, StoryState)} 相同，可按单轮意图覆盖摘要拼接与 topK。
+     */
+    public RagRetrievalResult retrieveRelevantContextResult(
+            String query, StoryState state, RagRetrievalModifiers modifiers) {
         if (state == null) {
             throw new IllegalArgumentException("state 不能为 null");
         }
@@ -72,18 +81,30 @@ public class RagRetrievalService {
             throw new IllegalArgumentException("state.storyId 不能为空");
         }
 
+        RagRetrievalModifiers mod = modifiers != null ? modifiers : RagRetrievalModifiers.defaults();
+        boolean augmentSummary =
+                mod.augmentSummary() != null
+                        ? mod.augmentSummary()
+                        : ragProperties.isAugmentQueryWithSummary();
+        int effectiveTopK =
+                mod.topKOverride() != null
+                        ? Math.max(1, mod.topKOverride())
+                        : ragProperties.getTopK();
+
         try {
-            String textForEmbed = limitEmbedInputForQuery(query, state);
+            String textForEmbed = limitEmbedInputForQuery(query, state, augmentSummary);
             log.debug(
-                    "RAG 嵌入请求 storyId={} model={} embedChars={} augmentSummary={} embedMaxChars={}",
+                    "RAG 嵌入请求 storyId={} model={} embedChars={} augmentSummary={} embedMaxChars={} effectiveTopK={}",
                     storyId,
                     embeddingModelName,
                     textForEmbed.length(),
-                    ragProperties.isAugmentQueryWithSummary(),
-                    ragProperties.getQueryEmbedMaxChars());
+                    augmentSummary,
+                    ragProperties.getQueryEmbedMaxChars(),
+                    effectiveTopK);
             var queryEmbedding = embeddingModel.embed(textForEmbed).content();
 
-            int maxFetch = Math.max(1, ragProperties.getTopK() * ragProperties.getSearchOverfetchMultiplier());
+            int maxFetch =
+                    Math.max(1, effectiveTopK * ragProperties.getSearchOverfetchMultiplier());
             Filter scopeFilter = buildRagScopeMetadataFilter(storyId, ragProperties);
             EmbeddingSearchRequest request =
                     EmbeddingSearchRequest.builder()
@@ -101,7 +122,7 @@ public class RagRetrievalService {
             scoped.sort(
                     Comparator.comparing(
                             EmbeddingMatch::score, Comparator.nullsLast(Comparator.reverseOrder())));
-            List<EmbeddingMatch> top = scoped.stream().limit(ragProperties.getTopK()).toList();
+            List<EmbeddingMatch> top = scoped.stream().limit(effectiveTopK).toList();
 
             if (top.isEmpty()) {
                 log.debug("RAG 无命中 storyId={} queryChars={}", storyId, query.length());
@@ -153,13 +174,13 @@ public class RagRetrievalService {
     /**
      * 将「用户 query ± 摘要」限制在 {@link RagProperties#getQueryEmbedMaxChars()} 内，优先保留完整用户 query，再截断摘要侧。
      */
-    private String limitEmbedInputForQuery(String query, StoryState state) {
-        String combined = buildEmbedInput(query, state);
+    private String limitEmbedInputForQuery(String query, StoryState state, boolean augmentSummary) {
+        String combined = buildEmbedInput(query, state, augmentSummary);
         int max = ragProperties.getQueryEmbedMaxChars();
         if (max <= 0 || combined.length() <= max) {
             return combined;
         }
-        if (!ragProperties.isAugmentQueryWithSummary()) {
+        if (!augmentSummary) {
             log.debug("RAG 嵌入输入截断：原 {} 字 → {}", combined.length(), max);
             return combined.substring(0, max);
         }
@@ -194,8 +215,8 @@ public class RagRetrievalService {
      * @param state 故事状态
      * @return 送入 {@link EmbeddingModel#embed(String)} 的文本
      */
-    private String buildEmbedInput(String query, StoryState state) {
-        if (!ragProperties.isAugmentQueryWithSummary()) {
+    private String buildEmbedInput(String query, StoryState state, boolean augmentSummary) {
+        if (!augmentSummary) {
             return query;
         }
         String summary = state.getCurrentSummary();

@@ -6,6 +6,7 @@ import { useToast } from '../../components/useToast'
 import { formatDateTime } from '../../lib/formatDate'
 import type { StoryDetailDto } from '../../types/stories'
 import { StoryDocumentsPanel } from './documents/StoryDocumentsPanel'
+import { StoryCharacterSnapshotsPanel } from './snapshots/StoryCharacterSnapshotsPanel'
 
 export function StoryDetailPage() {
   const { storyId = '' } = useParams<{ storyId: string }>()
@@ -161,6 +162,8 @@ export function StoryDetailPage() {
           <p className="mt-1">{formatDateTime(story.updatedAt)}</p>
         </div>
       </div>
+
+      <StoryCharacterSnapshotsPanel storyId={story.storyId} />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">文档</h2>

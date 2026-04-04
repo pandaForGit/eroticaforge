@@ -1,5 +1,6 @@
 package com.eroticaforge;
 
+import com.eroticaforge.config.CharacterCardImportProperties;
 import com.eroticaforge.config.CorpusImportProperties;
 import com.eroticaforge.config.GenerationProperties;
 import com.eroticaforge.config.PromptProperties;
@@ -18,7 +19,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
     RagProperties.class,
     GenerationProperties.class,
     PromptProperties.class,
-    CorpusImportProperties.class
+    CorpusImportProperties.class,
+    CharacterCardImportProperties.class
 })
 public class EroticaForgeApplication {
 

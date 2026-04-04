@@ -239,7 +239,7 @@ export function GeneratePage() {
                 const v = e.target.value
                 setMaxTokens(v === '' ? '' : Number(v))
               }}
-              placeholder="后端暂未接线"
+              placeholder="留空用默认；正整数覆盖本轮 max_tokens"
               disabled={streaming}
             />
           </label>

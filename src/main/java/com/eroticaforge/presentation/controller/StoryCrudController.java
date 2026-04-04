@@ -74,7 +74,8 @@ public class StoryCrudController {
                         request != null ? request.tags() : null,
                         defaultMainModel,
                         now);
-        storyWriteFacade.insertStoryWithInitialState(story);
+        storyWriteFacade.insertStoryWithInitialState(
+                story, request != null ? request.libraryCharacterIds() : null);
         CreateStoryResponse body = new CreateStoryResponse(id, story.getTitle(), story.getCreatedAt());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(body));
     }

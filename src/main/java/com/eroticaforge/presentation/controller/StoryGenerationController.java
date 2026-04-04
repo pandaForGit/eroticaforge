@@ -6,6 +6,7 @@ import com.eroticaforge.application.dto.api.GenerateSyncResponse;
 import com.eroticaforge.application.service.NovelGenerationService;
 import com.eroticaforge.application.service.PostGenerationService;
 import com.eroticaforge.application.service.StoryAccessService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -97,11 +98,7 @@ public class StoryGenerationController {
         }
 
         Integer maxTok = request != null ? request.maxTokens() : null;
-        log.info(
-                "SSE 流式生成开始 storyId={} promptChars={} maxTokens={}",
-                storyId,
-                prompt.length(),
-                maxTok);
+        logGenerateRequestJson(storyId, "SSE", request, prompt, maxTok);
         log.debug(
                 "SSE 请求 prompt 摘要（前 240 字）storyId={} snippet={}",
                 storyId,
@@ -127,7 +124,8 @@ public class StoryGenerationController {
                     false,
                     new GenerationStreamHandler(
                             storyId, prompt, emitter, httpResponse, accumulated, prompt.length()),
-                    pushRagFailure);
+                    pushRagFailure,
+                    normalizeMaxTokens(maxTok));
         } catch (Exception e) {
             emitter.completeWithError(e);
         }
@@ -154,17 +152,15 @@ public class StoryGenerationController {
             throw new UnsupportedOperationException("多模型链尚未实现（计划阶段 6）");
         }
         Integer maxTok = request != null ? request.maxTokens() : null;
-        log.info(
-                "同步生成开始 storyId={} promptChars={} maxTokens={}",
-                storyId,
-                prompt.length(),
-                maxTok);
+        logGenerateRequestJson(storyId, "SYNC", request, prompt, maxTok);
         log.debug(
                 "同步生成 prompt 摘要 storyId={} snippet={}",
                 storyId,
                 snippetForLog(prompt, 240));
 
-        var outcome = novelGenerationService.generateBlockingWithMeta(storyId, prompt, false);
+        var outcome =
+                novelGenerationService.generateBlockingWithMeta(
+                        storyId, prompt, false, normalizeMaxTokens(maxTok));
         log.info(
                 "同步生成模型返回 storyId={} textChars={} ragWarning={}",
                 storyId,
@@ -174,6 +170,43 @@ public class StoryGenerationController {
                 postGenerationService.processGeneratedContent(storyId, outcome.text(), prompt);
         return ApiResponse.ok(
                 new GenerateSyncResponse(outcome.text(), post.chapterId(), outcome.ragWarning()));
+    }
+
+    /**
+     * 将 {@link GenerateRequest} 以 JSON 打一条 INFO，便于对照前端/代理是否传错字段（含 {@code prompt} 全文）。
+     */
+    private void logGenerateRequestJson(
+            String storyId, String mode, GenerateRequest req, String prompt, Integer maxTok) {
+        try {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("storyId", storyId);
+            m.put("mode", mode);
+            m.put("prompt", prompt);
+            m.put("maxTokens", maxTok);
+            m.put("maxTokensEffective", normalizeMaxTokens(maxTok));
+            m.put("useMultiModel", req != null ? req.useMultiModel() : null);
+            log.info("生成接口请求参数 {}", objectMapper.writeValueAsString(m));
+        } catch (JsonProcessingException e) {
+            log.warn(
+                    "生成接口请求参数序列化失败 storyId={} mode={} maxTokens={} effective={} useMultiModel={} promptChars={}",
+                    storyId,
+                    mode,
+                    maxTok,
+                    normalizeMaxTokens(maxTok),
+                    req != null ? req.useMultiModel() : null,
+                    prompt != null ? prompt.length() : 0,
+                    e);
+        }
+    }
+
+    /**
+     * 将请求体中的 {@code maxTokens} 转为 LangChain 覆盖值；非正或缺省则使用模型默认（application.yml）。
+     */
+    private static Integer normalizeMaxTokens(Integer maxTokens) {
+        if (maxTokens == null || maxTokens <= 0) {
+            return null;
+        }
+        return maxTokens;
     }
 
     private static String snippetForLog(String text, int maxChars) {

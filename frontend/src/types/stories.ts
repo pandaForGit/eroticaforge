@@ -3,6 +3,8 @@
 export interface CreateStoryRequest {
   title: string
   tags: string[] | null
+  /** 从人物卡库克隆到故事快照，有序 */
+  libraryCharacterIds?: string[] | null
 }
 
 export interface CreateStoryResponse {

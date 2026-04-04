@@ -13,13 +13,9 @@ spring:
       max-file-size: 10MB
       max-request-size: 12MB
   datasource:
-    # 使用环境变量注入，勿把云库密码写进仓库。示例：
-    # set DB_URL=jdbc:postgresql://host:5432/vectordb
-    # set DB_USERNAME=panda
-    # set DB_PASSWORD=***
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/vectordb}
-    username: ${DB_USERNAME:panda}
-    password: ${DB_PASSWORD:}
+    url: jdbc:postgresql://1.14.149.117:5432/vectordb
+    username: panda
+    password: pandapanda
     driver-class-name: org.postgresql.Driver
   config:
     import: optional:classpath:application-local.yml
@@ -37,15 +33,18 @@ mybatis-plus:
 # 可升级 LangChain4j 至 1.0.0+ 并开启 returnThinking，或在 llama-server 关闭 thinking，使输出走 content。
 langchain4j:
   open-ai:
-    base-url: ${LLM_BASE_URL:http://localhost:8080/v1}
+    base-url: ${LLM_BASE_URL:http://100.112.90.44:8080/v1}
     api-key: ${LLM_API_KEY:sk-anything}
     chat-model:
       model-name: ${LLM_MODEL:Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf}
-      temperature: 0.9
-      max-tokens: 4096
+      # 略降温度、缩短上限，配合 frequency/presence 惩罚减轻复读（llama-server 需支持 OpenAI 兼容字段）
+      temperature: ${LLM_TEMPERATURE:0.7}
+      max-tokens: ${LLM_MAX_TOKENS:1200}
+      frequency-penalty: ${LLM_FREQUENCY_PENALTY:0.35}
+      presence-penalty: ${LLM_PRESENCE_PENALTY:0.05}
     # OpenAI 兼容嵌入（LangChain4j 在 base-url 上请求 /embeddings，故填到 /v1 即可，勿写完整 .../embeddings）
     embedding-model:
-      base-url: ${LLAMA_EMBEDDING_BASE_URL:http://127.0.0.1:8081/v1}
+      base-url: ${LLAMA_EMBEDDING_BASE_URL:http://100.112.90.44:8081/v1}
       api-key: ${LLAMA_EMBEDDING_API_KEY:sk-anything}
       model-name: ${LLAMA_EMBEDDING_MODEL:text-embedding}
       max-retries: ${LLAMA_EMBEDDING_MAX_RETRIES:0}
@@ -83,6 +82,10 @@ erotica:
     enable: false
     jsonl-path: ${CORPUS_IMPORT_JSONL:F:\project\ai\ai-writer\dataAnalysisModule\out\corpus_classification.jsonl}
     corpus-root: ${CORPUS_IMPORT_ROOT:F:\project\ai\ai-writer\dataAnalysisModule\src\main\resources\小说}
+  # enable=true 时启动后导入人物卡 JSONL → erotica_character_library（CharacterCardsJsonlImportApplicationRunner）
+  character-cards-import:
+    enable: false
+    jsonl-path: ${CHARACTER_CARDS_JSONL:dataAnalysisModule/out/character_cards.jsonl}
   # 阶段 4：生成闭环（见 GenerationProperties）
   generation:
     reindex-chapter-to-rag: false
@@ -91,7 +94,7 @@ erotica:
     use-llm-for-state-excerpt: true
   # 提示词（见 PromptProperties / PromptComposer）；默认在代码中，可在此或 application-local.yml 覆盖
   # 生成主模板占位符：{{globalSystem}}、{{currentSummary}}、{{characterStates}}、{{importantFacts}}、
-  # {{lastChapterEnding}}、{{ragContext}}、{{loreTriggers}}、{{userPrompt}}
+  # {{lastChapterEnding}}、{{characterProfiles}}、{{ragContext}}、{{loreTriggers}}、{{userPrompt}}
   # 状态摘录模板占位符：{{generatedText}}
   prompt:
     rag:
