@@ -12,10 +12,11 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 12MB
+  # 真实库地址与账号勿写入仓库：用环境变量或 application-local.yml（已 gitignore）
   datasource:
-    url: jdbc:postgresql://1.14.149.117:5432/vectordb
-    username: panda
-    password: pandapanda
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/vectordb}
+    username: ${SPRING_DATASOURCE_USERNAME:eroticaforge}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
   config:
     import: optional:classpath:application-local.yml
@@ -33,7 +34,7 @@ mybatis-plus:
 # 可升级 LangChain4j 至 1.0.0+ 并开启 returnThinking，或在 llama-server 关闭 thinking，使输出走 content。
 langchain4j:
   open-ai:
-    base-url: ${LLM_BASE_URL:http://100.112.90.44:8080/v1}
+    base-url: ${LLM_BASE_URL:http://127.0.0.1:8080/v1}
     api-key: ${LLM_API_KEY:sk-anything}
     chat-model:
       model-name: ${LLM_MODEL:Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf}
@@ -44,7 +45,7 @@ langchain4j:
       presence-penalty: ${LLM_PRESENCE_PENALTY:0.05}
     # OpenAI 兼容嵌入（LangChain4j 在 base-url 上请求 /embeddings，故填到 /v1 即可，勿写完整 .../embeddings）
     embedding-model:
-      base-url: ${LLAMA_EMBEDDING_BASE_URL:http://100.112.90.44:8081/v1}
+      base-url: ${LLAMA_EMBEDDING_BASE_URL:http://127.0.0.1:8081/v1}
       api-key: ${LLAMA_EMBEDDING_API_KEY:sk-anything}
       model-name: ${LLAMA_EMBEDDING_MODEL:text-embedding}
       max-retries: ${LLAMA_EMBEDDING_MAX_RETRIES:0}

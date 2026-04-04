@@ -1,6 +1,17 @@
 # 复制为 application-local.yml（勿提交仓库），与 spring.config.import optional 配合使用
+#
+# 也可用环境变量（与 application.yml 中占位符一致）：
+#   SPRING_DATASOURCE_URL / SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD
+#   LLM_BASE_URL / LLAMA_EMBEDDING_BASE_URL / LLM_API_KEY 等
 spring:
   datasource:
     url: jdbc:postgresql://HOST:5432/vectordb
     username: USER
     password: PASSWORD
+
+# 可选：远程或 Tailscale 上的 llama-server（勿把真实地址写进 application.yml）
+# langchain4j:
+#   open-ai:
+#     base-url: http://YOUR_LLM_HOST:8080/v1
+#     embedding-model:
+#       base-url: http://YOUR_EMBED_HOST:8081/v1
